@@ -1,0 +1,12 @@
+name = Helper Tool
+description = Provides helper_tool content type
+core = 7.x
+package = Helper
+version = 7.x-1.0
+project = helper_tool
+dependencies[] = entityreference
+dependencies[] = features
+features[features_api][] = api:2
+features[field_base][] = field_helper_tool_use_cases
+features[field_instance][] = node-helper_tool-field_helper_tool_use_cases
+features[node][] = helper_tool

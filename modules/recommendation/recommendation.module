@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the Recommendation feature.
+ */
+
+include_once 'recommendation.features.inc';

@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the Helper Tool feature.
+ */
+
+include_once 'helper_tool.features.inc';

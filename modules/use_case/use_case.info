@@ -1,0 +1,15 @@
+name = Use Case
+description = Provides use case content type.
+core = 7.x
+package = Helper
+version = 7.x-1.0
+project = use_case
+dependencies[] = entityreference
+dependencies[] = features
+dependencies[] = text
+features[features_api][] = api:2
+features[field_base][] = field_use_case_description
+features[field_base][] = field_use_case_recommendations
+features[field_instance][] = node-use_case-field_use_case_description
+features[field_instance][] = node-use_case-field_use_case_recommendations
+features[node][] = use_case

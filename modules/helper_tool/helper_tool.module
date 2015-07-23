@@ -5,3 +5,212 @@
  */
 
 include_once 'helper_tool.features.inc';
+
+/**
+ * Implements hook_field_formatter_info().
+ */
+function helper_tool_field_formatter_info() {
+  return array(
+    'helper_tool_for_use_cases' => array(
+      'label' => t('Helper tool for use cases'),
+      'field types' => array('entityreference'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_formatter_view().
+ */
+function helper_tool_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+  if ($entity->type != 'helper_tool') {
+    drupal_set_message(t(
+      'The helper_tool_for_use_cases formatter is only supposed to be used with the helper_tool content type. Use something else for the entityreference field on your node.',
+      'error'));
+  }
+
+  $use_case_nids = array();
+  foreach ($items as $item) {
+    foreach ($item as $nid) {
+      $use_case_nids[] = $nid;
+    }
+  }
+
+  $use_case_nodes = node_load_multiple($use_case_nids);
+  $use_case_options = helper_tool_get_use_cases($use_case_nodes);
+  $recommendation_nodes = helper_tool_get_recommendation_nodes_from_use_case_nodes($use_case_nodes);
+  $recommendation_types = helper_tool_get_recommendation_types_from_nodes($recommendation_nodes);
+
+  $form_state['storage']['use_case_options'] = $use_case_options;
+  $form_state['storage']['use_case_nodes'] = $use_case_nodes;
+  $form_state['storage']['recommendation_nodes'] = $recommendation_nodes;
+  $form_state['storage']['recommendation_types'] = $recommendation_types;
+
+  $elements[0] = drupal_build_form('helper_tool_get_use_cases_form', $form_state);
+
+  return $elements;
+}
+
+/**
+ * @param array nodes
+ *   use_case nodes
+ *
+ * @return array
+ *   options for checkboxes keyed by node title (lowercase)
+ */
+function helper_tool_get_use_cases($nodes) {
+  $options = array();
+  foreach ($nodes as $node) {
+    $options[strtolower($node->title)] = $node->field_use_case_description['und'][0]['safe_value'];
+  }
+
+  return $options;
+}
+
+function helper_tool_get_recommendation_nodes_from_use_case_nodes($use_case_nodes) {
+  $nids = array();
+  foreach ($use_case_nodes as $node) {
+    foreach($node->field_use_case_recommendations['und'] as $item) {
+      foreach ($item as $nid) {
+        $nids[] = $nid;
+      }
+    }
+  }
+  $recommendation_nodes = node_load_multiple($nids);
+
+  return $recommendation_nodes;
+}
+
+/**
+ * @param array $options
+ *   checkbox options
+ *
+ * @return array
+ *   FAPI form
+ */
+function helper_tool_get_use_cases_form($form, &$form_state) {
+  if (empty($form_state['storage'])) {
+    drupal_set_message('Sorry. Storage settings are missing. Im confused. Contact an admin.', 'error');
+    return;
+  }
+
+  $options = $form_state['storage']['use_case_options'];
+  $recommendations_markup = helper_tool_get_recommendations_markup($form_state);
+
+  $form = array();
+  $form['helper_tool_use_cases'] = array(
+    '#title' => t('Security use cases'),
+    '#type' => 'checkboxes',
+    '#options' => $options,
+    '#ajax' => array(
+      'callback' => 'helper_tool_get_recommendations_for_use_cases',
+      'wrapper' => 'helper-tool-recommendations',
+    ),
+  );
+
+  $form['helper_tool_recommendations_for_use_cases'] = array(
+    '#type' => 'item',
+    '#title' => 'Solution recommendations',
+    '#markup' =>  $recommendations_markup,
+  );
+
+  return $form;
+}
+
+function helper_tool_get_recommendations_markup($form_state) {
+  // All possible use cases, related recommendations, and related recommendation types.
+  $use_case_nodes       = $form_state['storage']['use_case_nodes'];
+  $recommendation_nodes = $form_state['storage']['recommendation_nodes'];
+  $recommendation_types = $form_state['storage']['recommendation_types'];
+
+  // Selected use cases and related recommendations.
+  $selected_use_cases = (!empty($form_state['values'])) ? $form_state['values']['helper_tool_use_cases'] : array();
+  $selected_use_case_nodes = array();
+  foreach ($use_case_nodes as $node) {
+    $key = strtolower($node->title);
+    if (isset($selected_use_cases[$key]) && $selected_use_cases[$key] !== 0) {
+      $selected_use_case_nodes[] = $node;  
+    }
+  }
+  $selected_recommendation_nodes = helper_tool_get_recommendation_nodes_from_use_case_nodes($selected_use_case_nodes);
+
+  $html_inner = '';
+  foreach ($recommendation_types as $tag) {
+    $possible_recommendations = helper_tool_get_recommendations_from_nodes_with_tag($recommendation_nodes, $tag);
+    $recommendations = helper_tool_get_selected_recommendations_from_nodes($selected_recommendation_nodes);
+    $table = helper_tool_get_recommendation_table_html($recommendations, $possible_recommendations);
+    $html_inner .= sprintf('<h3>%s</h3>%s', $tag->name, $table);
+  }
+  $html = sprintf('<div id="helper-tool-recommendations">%s</div>', $html_inner);
+
+  return $html;
+}
+
+/**
+ * @param array $recommendation_nodes
+ *   Array of recommendation nodes
+ *
+ * @return array
+ *   Array of taxonomy terms
+ */
+function helper_tool_get_recommendation_types_from_nodes(array $recommendation_nodes) {
+  $tids = array();
+
+  foreach ($recommendation_nodes as $node) {
+    if (!empty($node->field_recommendation_type['und'][0]['tid'])) {
+      $tids[] = $node->field_recommendation_type['und'][0]['tid'];
+    }
+  }
+
+  return taxonomy_term_load_multiple($tids);
+}
+
+function helper_tool_get_recommendations_from_nodes_with_tag(array $recommendation_nodes, $tag) {
+  $tid = $tag->tid;
+
+  $recommendations = array();
+  foreach ($recommendation_nodes as $node) {
+    if ($node->field_recommendation_type['und'][0]['tid'] == $tid) {
+      $recommendations[$node->title] = $node->field_recommendation_description['und'][0]['safe_value'];
+    }
+  }
+
+  return $recommendations;
+}
+
+function helper_tool_get_recommendation_table_html($recommendations, $possible_recommendations) {
+  $recommendation_names = array_keys($recommendations);
+
+  $variables = array();
+  $variables['header'] = array(
+    t('Required'),
+    t('Name'),
+    t('Description'),
+  );
+  $variables['rows'] = array();
+
+  foreach ($possible_recommendations as $name => $description) {
+    $recommended = (in_array($name, $recommendation_names)) ? t('Yes') : '';
+    $variables['rows'][] = array(
+      'data' => array($recommended, $name, $description),
+      'no_striping' => TRUE,
+    );
+  }
+
+  return theme('table', $variables);
+}
+
+/**
+ * @return array
+ */
+function helper_tool_get_selected_recommendations_from_nodes(array $selected_recommendation_nodes) {
+  $recommendations = array();
+  foreach($selected_recommendation_nodes as $node) {
+    $recommendations[$node->title] = $node->field_recommendation_description['und'][0]['safe_value'];
+  }
+
+  return $recommendations;
+}
+
+function helper_tool_get_recommendations_for_use_cases($form, $form_state) {
+  return helper_tool_get_recommendations_markup($form_state);
+}

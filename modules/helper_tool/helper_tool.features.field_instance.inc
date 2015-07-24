@@ -19,9 +19,9 @@ function helper_tool_field_default_field_instances() {
     'display' => array(
       'default' => array(
         'label' => 'above',
-        'module' => 'helper_tool',
+        'module' => 'helper',
         'settings' => array(),
-        'type' => 'helper_tool_for_use_cases',
+        'type' => 'helper_for_use_cases',
         'weight' => 0,
       ),
       'teaser' => array(

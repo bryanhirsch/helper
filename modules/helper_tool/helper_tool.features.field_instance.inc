@@ -19,11 +19,9 @@ function helper_tool_field_default_field_instances() {
     'display' => array(
       'default' => array(
         'label' => 'above',
-        'module' => 'entityreference',
-        'settings' => array(
-          'link' => FALSE,
-        ),
-        'type' => 'entityreference_label',
+        'module' => 'helper_tool',
+        'settings' => array(),
+        'type' => 'helper_tool_for_use_cases',
         'weight' => 0,
       ),
       'teaser' => array(

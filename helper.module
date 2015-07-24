@@ -33,9 +33,21 @@ function helper_field_formatter_view($entity_type, $entity, $field, $instance, $
     }
   }
 
+  // @TODO This is a little gross. Initially all the functionality here was tied
+  // to a single entityreference field pointing at use_case nodes. Now there's
+  // a dependency on another field, so this logic really belongs in
+  // hook_node_view (or maybe a preprocessor) rather than a field formatter.
+  // Move this.
+  $additional_recommendations_nids = array();
+  foreach ($entity->field_helper_tool_addl_recs['und'] as $entityref) {
+    foreach ($entityref as $key => $nid) {
+      $additional_recommendations_nids[] = $nid;
+    }
+  }
+
   $use_case_nodes = node_load_multiple($use_case_nids);
   $use_case_options = helper_get_use_cases($use_case_nodes);
-  $recommendation_nodes = helper_get_recommendation_nodes_from_use_case_nodes($use_case_nodes);
+  $recommendation_nodes = helper_get_recommendation_nodes_from_use_case_nodes($use_case_nodes, $additional_recommendations_nids);
   $recommendation_types = helper_get_recommendation_types_from_nodes($recommendation_nodes);
 
   $form_state['storage']['use_case_options'] = $use_case_options;
@@ -64,8 +76,21 @@ function helper_get_use_cases($nodes) {
   return $options;
 }
 
-function helper_get_recommendation_nodes_from_use_case_nodes($use_case_nodes) {
+/**
+ * @param $use_case_nodes
+ *   Use case nodes with entityreferences to related recommendations.
+ *
+ * @param $additional_recommendation_nids
+ *   Nids for additional recommendation nodes to include.
+ *
+ * @return mixed
+ */
+function helper_get_recommendation_nodes_from_use_case_nodes($use_case_nodes, $additional_recommendation_nids = array()) {
   $nids = array();
+  if (!empty($additional_recommendation_nids)) {
+    $nids = array_merge($nids, $additional_recommendation_nids);
+  }
+
   foreach ($use_case_nodes as $node) {
     foreach($node->field_use_case_recommendations['und'] as $item) {
       foreach ($item as $nid) {

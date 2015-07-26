@@ -211,6 +211,10 @@ function helper_get_recommendation_table_html($recommendations, $possible_recomm
   );
   $variables['rows'] = array();
 
+  // Keys are displayed as "name". Sort by name.
+  ksort($possible_recommendations);
+
+  // Organize recommendations into themeable data table.
   foreach ($possible_recommendations as $name => $description) {
     $recommended = (in_array($name, $recommendation_names)) ? t('Yes') : '';
     $variables['rows'][] = array(

@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the Recommendation Overrides feature.
+ */
+
+include_once 'recommendation_overrides.features.inc';

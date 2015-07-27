@@ -46,41 +46,52 @@ function recommendation_overrides_enforce_overrides($recommendation_nodes) {
     $recommendation_nids[$recommendation_node->nid] = $recommendation_node->nid;
   }
 
-  foreach ($overrides_nodes as $overrides_node) {
+  $overrides_count = 0;
+  $loop_count = 0;
+  while ($loop_count < 10) {
 
-    // Test.
-    $nids_to_override = recomendation_overrides_get_nids_from_overrides_node($overrides_node);
-    $override_is_necessary = recommendation_overrides_is_necessary($recommendation_nids, $nids_to_override);
-    if (!$override_is_necessary) {
-      // Test did not pass. Move on to next override check.
-      continue;
-    }
+    foreach ($overrides_nodes as $overrides_node) {
+      $loop_count++;
 
-    // Suppress.
-    $nids_to_suppress = recommendation_overrides_get_nids_to_suppress_from_overrides_node($overrides_node);
-    foreach ($nids_to_suppress as $nid) {
-      unset($recommendation_nodes[$nid]);
-    }
+      // Test.
+      $nids_to_override = recomendation_overrides_get_nids_from_overrides_node($overrides_node);
+      $override_is_necessary = recommendation_overrides_is_necessary($recommendation_nids, $nids_to_override);
+      if (!$override_is_necessary) {
+        // Test did not pass. Move on to next override check.
+        continue;
+      }
+      $overrides_count++;
 
-    // Suggest.
-    $nids_to_suggest = recommendation_overrides_get_nids_to_suggest_from_overrides_node($overrides_node);
-    $new_recommendation_nodes = node_load_multiple($nids_to_suggest);
-    foreach ($nids_to_suggest as $nid) {
-      $recommendation_nodes[$nid] = $new_recommendation_nodes[$nid];
-    }
+      // Suppress.
+      $nids_to_suppress = recommendation_overrides_get_nids_to_suppress_from_overrides_node($overrides_node);
+      foreach ($nids_to_suppress as $nid) {
+        unset($recommendation_nodes[$nid]);
+      }
 
-    // Drupal set messages.
-    $notice_messages = recommendation_overrides_get_notice_messages_from_overrides_node($overrides_node);
-    foreach ($notice_messages as $message) {
-      drupal_set_message($message, 'notice');
-    }
+      // Suggest.
+      $nids_to_suggest = recommendation_overrides_get_nids_to_suggest_from_overrides_node($overrides_node);
+      $new_recommendation_nodes = node_load_multiple($nids_to_suggest);
+      foreach ($nids_to_suggest as $nid) {
+        $recommendation_nodes[$nid] = $new_recommendation_nodes[$nid];
+      }
 
-    $error_messages = recommendation_overrides_get_error_messages_from_overrides_node($overrides_node);
-    foreach ($error_messages as $message) {
-      drupal_set_message($message, 'error');
-    }
+      // Drupal set messages.
+      $notice_messages = recommendation_overrides_get_notice_messages_from_overrides_node($overrides_node);
+      foreach ($notice_messages as $message) {
+        drupal_set_message($message, 'notice');
+      }
 
-  }
+      $error_messages = recommendation_overrides_get_error_messages_from_overrides_node($overrides_node);
+      foreach ($error_messages as $message) {
+        drupal_set_message($message, 'error');
+      }
+
+      if (!$loop_count < 10) {
+        drupal_set_message('After ten pass throughs, there are still overrides. You probably have two conflicting overrides somewhere.', 'error');
+      }
+
+    } // end foreach
+  } // end while
 
   return $recommendation_nodes;
 }

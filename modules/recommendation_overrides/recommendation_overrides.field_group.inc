@@ -75,19 +75,21 @@ function recommendation_overrides_field_group_info() {
   $field_group->mode = 'form';
   $field_group->parent_name = '';
   $field_group->data = array(
-    'label' => 'If these recommendations appear at the same time...',
+    'label' => 'Conditions',
     'weight' => '1',
     'children' => array(
       0 => 'field_recommendations_to_overrid',
+      1 => 'field_recommendations_to_overri2',
     ),
     'format_type' => 'fieldset',
     'format_settings' => array(
-      'formatter' => 'collapsible',
+      'label' => 'Conditions',
       'instance_settings' => array(
-        'description' => '',
-        'classes' => 'group-override-these field-group-fieldset',
         'required_fields' => 1,
+        'classes' => 'group-override-these field-group-fieldset',
+        'description' => '',
       ),
+      'formatter' => 'collapsible',
     ),
   );
   $export['group_override_these|node|recommendation_overrides|form'] = $field_group;

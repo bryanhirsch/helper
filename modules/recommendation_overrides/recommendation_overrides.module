@@ -70,12 +70,12 @@ function recommendation_overrides_enforce_overrides($recommendation_nodes) {
     }
 
     // Drupal set messages.
-    $notice_messages = recommendation_overrides_get_notice_messages_from_overrides_node($override_node);
+    $notice_messages = recommendation_overrides_get_notice_messages_from_overrides_node($overrides_node);
     foreach ($notice_messages as $message) {
       drupal_set_message($message, 'notice');
     }
 
-    $error_messages = recommendation_overrides_get_error_messages_from_overrides_node($override_node);
+    $error_messages = recommendation_overrides_get_error_messages_from_overrides_node($overrides_node);
     foreach ($error_messages as $message) {
       drupal_set_message($message, 'error');
     }
@@ -141,33 +141,29 @@ function recommendation_overrides_get_nids_to_suggest_from_overrides_node($overr
   return recommendation_overrides_get_referenced_nids_from_field_in_node('field_recommendations_to_suggest', $overrides_node);
 }
 
-function recommendation_overrides_get_notice_messages_from_overrides_node($override_node) {
+function recommendation_overrides_get_notice_messages_from_overrides_node($overrides_node) {
   $messages = array();
 
-  if (empty($override_node->field_override_notice_message)) {
+  if (empty($overrides_node->field_override_notice_message)) {
     return $messages;
   }
 
-  foreach ($override_node->field_override_notice_message['und'] as $notice_messages) {
-    foreach ($notice_messages as $message) {
-      $messages[] = $messages['safe_value'];
-    }
+  foreach ($overrides_node->field_override_notice_message['und'] as $notice_messages) {
+    $messages[] = $notice_messages['safe_value'];
   }
 
   return $messages;
 }
 
-function recommendation_overrides_get_error_messages_from_overrides_node($override_node) {
+function recommendation_overrides_get_error_messages_from_overrides_node($overrides_node) {
   $messages = array();
 
-  if (empty($override_node->field_error_notice_message)) {
+  if (empty($overrides_node->field_override_error_message)) {
     return $messages;
   }
 
-  foreach ($override_node->field_override_error_message['und'] as $error_messages) {
-    foreach ($error_messages as $message) {
-      $messages[] = $messages['safe_value'];
-    }
+  foreach ($overrides_node->field_override_error_message['und'] as $error_messages) {
+    $messages[] = $error_messages['safe_value'];
   }
 
   return $messages;

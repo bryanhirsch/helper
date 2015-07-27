@@ -77,6 +77,8 @@ function helper_get_use_cases($nodes) {
 }
 
 /**
+ * This function generates recommendations based on the selected use case(s).
+ *
  * @param $use_case_nodes
  *   Use case nodes with entityreferences to related recommendations.
  *
@@ -102,6 +104,8 @@ function helper_get_recommendation_nodes_from_use_case_nodes($use_case_nodes, $a
 
   return $recommendation_nodes;
 }
+
+
 
 /**
  * @param array $options
@@ -141,9 +145,9 @@ function helper_get_use_cases_form($form, &$form_state) {
 
 function helper_get_recommendations_markup($form_state) {
   // All possible use cases, related recommendations, and related recommendation types.
-  $use_case_nodes       = $form_state['storage']['use_case_nodes'];
-  $recommendation_nodes = $form_state['storage']['recommendation_nodes'];
-  $recommendation_types = $form_state['storage']['recommendation_types'];
+  $use_case_nodes                 = $form_state['storage']['use_case_nodes'];
+  $recommendation_nodes           = $form_state['storage']['recommendation_nodes'];
+  $recommendation_types           = $form_state['storage']['recommendation_types'];
 
   // Selected use cases and related recommendations.
   $selected_use_cases = (!empty($form_state['values'])) ? $form_state['values']['helper_use_cases'] : array();
@@ -155,6 +159,7 @@ function helper_get_recommendations_markup($form_state) {
     }
   }
   $selected_recommendation_nodes = helper_get_recommendation_nodes_from_use_case_nodes($selected_use_case_nodes);
+  $selected_recommendation_nodes = recommendation_overrides_enforce_overrides($selected_recommendation_nodes);
 
   $html_inner = '';
   foreach ($recommendation_types as $tag) {

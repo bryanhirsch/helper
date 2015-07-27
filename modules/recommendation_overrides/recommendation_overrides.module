@@ -5,3 +5,170 @@
  */
 
 include_once 'recommendation_overrides.features.inc';
+
+/**
+ * Retrieve all loaded override nodes.
+ *
+ * @return mixed
+ */
+function recommendation_overrides_get_nodes() {
+  $nids = recommendation_overrides_get_nids();
+  return node_load_multiple($nids);
+}
+
+/**
+ * Get all recommendation_overrides nids.
+ *
+ * @return array
+ */
+function recommendation_overrides_get_nids() {
+  $nids = array();
+
+  $results = db_query('select nid from {node} where type = :type and status = :status', array(":type" => "recommendation_overrides", "status" => 1))->fetchAll();
+  foreach($results as $result) {
+    $nids[] = $result->nid;
+  }
+
+  return $nids;
+}
+
+/**
+ * @param $recommendation_nodes
+ *
+ * @return array
+ *   Recommendation nodes with overrides applied as appropriate.
+ */
+function recommendation_overrides_enforce_overrides($recommendation_nodes) {
+  $overrides_nodes = recommendation_overrides_get_nodes();
+
+  $recommendation_nids = array();
+  foreach($recommendation_nodes as $recommendation_node) {
+    $recommendation_nids[$recommendation_node->nid] = $recommendation_node->nid;
+  }
+
+  foreach ($overrides_nodes as $overrides_node) {
+
+    // Test.
+    $nids_to_override = recomendation_overrides_get_nids_from_overrides_node($overrides_node);
+    $override_is_necessary = recommendation_overrides_is_necessary($recommendation_nids, $nids_to_override);
+    if (!$override_is_necessary) {
+      // Test did not pass. Move on to next override check.
+      continue;
+    }
+
+    // Suppress.
+    $nids_to_suppress = recommendation_overrides_get_nids_to_suppress_from_overrides_node($overrides_node);
+    foreach ($nids_to_suppress as $nid) {
+      unset($recommendation_nodes[$nid]);
+    }
+
+    // Suggest.
+    $nids_to_suggest = recommendation_overrides_get_nids_to_suggest_from_overrides_node($overrides_node);
+    $new_recommendation_nodes = node_load_multiple($nids_to_suggest);
+    foreach ($nids_to_suggest as $nid) {
+      $recommendation_nodes[$nid] = $new_recommendation_nodes[$nid];
+    }
+
+    // Drupal set messages.
+    $notice_messages = recommendation_overrides_get_notice_messages_from_overrides_node($override_node);
+    foreach ($notice_messages as $message) {
+      drupal_set_message($message, 'notice');
+    }
+
+    $error_messages = recommendation_overrides_get_error_messages_from_overrides_node($override_node);
+    foreach ($error_messages as $message) {
+      drupal_set_message($message, 'error');
+    }
+
+  }
+
+  return $recommendation_nodes;
+}
+
+function recomendation_overrides_get_nids_from_overrides_node($overrides_node) {
+  return recommendation_overrides_get_referenced_nids_from_field_in_node('field_recommendations_to_overrid', $overrides_node);
+}
+
+/**
+ * Return nids from an entityreference field.
+ *
+ * @param $field_name
+ * @return array
+ */
+function recommendation_overrides_get_referenced_nids_from_field_in_node($field_name, $overrides_node) {
+  $nids = array();
+
+  foreach ($overrides_node->{$field_name}['und'] as $entityreference) {
+    foreach ($entityreference as $nid) {
+      $nids[] = $nid;
+    }
+  }
+
+  return $nids;
+}
+
+/**
+ * @param array $recommendation_nids
+ *   nids from recommendation nodes
+ *
+ * @param array $nids_to_override
+ *   all these nids must be present to justify an override
+ *
+ * @return bool
+ */
+function recommendation_overrides_is_necessary(array $recommendation_nids, array $nids_to_override) {
+  if (empty($recommendation_nids) || empty($nids_to_override)) {
+    // Incomplete data to test here. Our work is done.
+    return FALSE;
+  }
+
+  // All nids in $nids_to_override must be present to justify an override.
+  foreach ($nids_to_override as $verify_nid_presence) {
+    if (!in_array($verify_nid_presence, $recommendation_nids)) {
+      return FALSE;
+    }
+  }
+
+  // If we made it this far, override must be necessary.
+  return TRUE;
+}
+
+function recommendation_overrides_get_nids_to_suppress_from_overrides_node($overrides_node) {
+  return recommendation_overrides_get_referenced_nids_from_field_in_node('field_recommendations_to_supress', $overrides_node);
+}
+
+function recommendation_overrides_get_nids_to_suggest_from_overrides_node($overrides_node) {
+  return recommendation_overrides_get_referenced_nids_from_field_in_node('field_recommendations_to_suggest', $overrides_node);
+}
+
+function recommendation_overrides_get_notice_messages_from_overrides_node($override_node) {
+  $messages = array();
+
+  if (empty($override_node->field_override_notice_message)) {
+    return $messages;
+  }
+
+  foreach ($override_node->field_override_notice_message['und'] as $notice_messages) {
+    foreach ($notice_messages as $message) {
+      $messages[] = $messages['safe_value'];
+    }
+  }
+
+  return $messages;
+}
+
+function recommendation_overrides_get_error_messages_from_overrides_node($override_node) {
+  $messages = array();
+
+  if (empty($override_node->field_error_notice_message)) {
+    return $messages;
+  }
+
+  foreach ($override_node->field_override_error_message['und'] as $error_messages) {
+    foreach ($error_messages as $message) {
+      $messages[] = $messages['safe_value'];
+    }
+  }
+
+  return $messages;
+}

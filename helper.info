@@ -2,3 +2,4 @@ name = 'Helper'
 description = 'Helps Sales and Solutions Architects spec out solutions for selected use cases.'
 core = 7.x
 dependencies[] = helper_tool
+dependencies[] = recommendation_overrides

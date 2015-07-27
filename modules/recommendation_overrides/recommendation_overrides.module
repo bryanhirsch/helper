@@ -38,8 +38,12 @@ function recommendation_overrides_get_nids() {
  * @return array
  *   Recommendation nodes with overrides applied as appropriate.
  */
-function recommendation_overrides_enforce_overrides($recommendation_nodes) {
+function recommendation_overrides_enforce_overrides(array $recommendation_nodes) {
   $overrides_nodes = recommendation_overrides_get_nodes();
+
+  if (empty($recommendation_nodes) || empty($overrides_nodes)) {
+    return array();
+  }
 
   $recommendation_nids = array();
   foreach($recommendation_nodes as $recommendation_node) {

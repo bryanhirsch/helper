@@ -45,26 +45,25 @@ function recommendation_overrides_enforce_overrides(array $recommendation_nodes)
     return array();
   }
 
-  $recommendation_nids = array();
-  foreach($recommendation_nodes as $recommendation_node) {
-    $recommendation_nids[$recommendation_node->nid] = $recommendation_node->nid;
-  }
+  $overrides_loops = 0;
+  $new_overrides_count = 0;
+  $loop_limit = 5;
+  while ($overrides_loops == 0 || $overrides_loops < $loop_limit && $new_overrides_count > 0) {
 
-  $overrides_count = 0;
-  $loop_count = 0;
-  while ($loop_count < 10) {
-
+    $new_overrides_count = 0;
     foreach ($overrides_nodes as $overrides_node) {
-      $loop_count++;
+
+      // Get fresh list of recommendation nids, taking into account any overrides
+      // already applied to $recommendation_nodes.
+      $recommendation_nids = recommendation_overrides_get_nids_from_nodes($recommendation_nodes);
 
       // Test.
-      $nids_to_override = recomendation_overrides_get_nids_from_overrides_node($overrides_node);
-      $override_is_necessary = recommendation_overrides_is_necessary($recommendation_nids, $nids_to_override);
-      if (!$override_is_necessary) {
+      $overrides_are_necessary = recommendation_overrides_are_necessary($recommendation_nids, $overrides_node);
+      if (!$overrides_are_necessary) {
         // Test did not pass. Move on to next override check.
         continue;
       }
-      $overrides_count++;
+      $new_overrides_count++;
 
       // Suppress.
       $nids_to_suppress = recommendation_overrides_get_nids_to_suppress_from_overrides_node($overrides_node);
@@ -90,11 +89,16 @@ function recommendation_overrides_enforce_overrides(array $recommendation_nodes)
         drupal_set_message($message, 'error');
       }
 
-      if (!$loop_count < 10) {
-        drupal_set_message('After ten pass throughs, there are still overrides. You probably have two conflicting overrides somewhere.', 'error');
-      }
-
     } // end foreach
+
+    $overrides_loops++;
+    /*
+    // @TODO It seems like the overrides should become unnecessary. This would require some additional fine tuning.
+    if ($overrides_loops == $loop_limit && $new_overrides_count > 0) {
+      drupal_set_message("After {$loop_limit} passes through all the overrides, there are still new overrides. You probably have two conflicting overrides somewhere.", 'error');
+    }
+    // */
+
   } // end while
 
   return $recommendation_nodes;
@@ -102,6 +106,16 @@ function recommendation_overrides_enforce_overrides(array $recommendation_nodes)
 
 function recomendation_overrides_get_nids_from_overrides_node($overrides_node) {
   return recommendation_overrides_get_referenced_nids_from_field_in_node('field_recommendations_to_overrid', $overrides_node);
+}
+
+function recommendation_overrides_get_nids_from_nodes(array $nodes) {
+  $nids = array();
+
+  foreach($nodes as $node) {
+    $nids[$node->nid] = $node->nid;
+  }
+
+  return $nids;
 }
 
 /**
@@ -126,26 +140,46 @@ function recommendation_overrides_get_referenced_nids_from_field_in_node($field_
  * @param array $recommendation_nids
  *   nids from recommendation nodes
  *
- * @param array $nids_to_override
- *   all these nids must be present to justify an override
+ * @param array $overrides_node
+ *   Node containing override rules and conditions.
  *
  * @return bool
  */
-function recommendation_overrides_is_necessary(array $recommendation_nids, array $nids_to_override) {
-  if (empty($recommendation_nids) || empty($nids_to_override)) {
-    // Incomplete data to test here. Our work is done.
-    return FALSE;
-  }
+function recommendation_overrides_are_necessary(array $recommendation_nids, stdClass $overrides_node) {
+  // Get conditions to trigger an override. If recommendation includes ANY nids
+  // from group 1 AND ANY form group 2, an override is required.
+  $criteria_1_nids = recommendation_overrides_get_referenced_nids_from_field_in_node('field_recommendations_to_overrid', $overrides_node);
+  $criteria_2_nids = recommendation_overrides_get_referenced_nids_from_field_in_node('field_recommendations_to_overri2', $overrides_node);
 
-  // All nids in $nids_to_override must be present to justify an override.
-  foreach ($nids_to_override as $verify_nid_presence) {
-    if (!in_array($verify_nid_presence, $recommendation_nids)) {
-      return FALSE;
+  // Test.
+  $criteria1 = recommendation_overrides_test_criteria_against_recommendations($criteria_1_nids, $recommendation_nids);
+  $criteria2 = recommendation_overrides_test_criteria_against_recommendations($criteria_2_nids, $recommendation_nids);
+
+  // If both criteria are met, overrides are necessary, return TRUE.
+  if ($criteria1 && $criteria2) {
+    return TRUE;
+  }
+  return FALSE;
+}
+
+/**
+ * Test recommendations for ANY of the possible criteria nids.
+ *
+ * @param $criteria_nids
+ * @param $recommendation_nids
+ * @return bool
+ */
+function recommendation_overrides_test_criteria_against_recommendations($criteria_nids, $recommendation_nids) {
+  $test_result = FALSE;
+
+  foreach ($criteria_nids as $nid) {
+    if (in_array($nid, $recommendation_nids)) {
+      $test_result = TRUE;
+      break;
     }
   }
 
-  // If we made it this far, override must be necessary.
-  return TRUE;
+  return $test_result;
 }
 
 function recommendation_overrides_get_nids_to_suppress_from_overrides_node($overrides_node) {

@@ -70,7 +70,9 @@ function helper_field_formatter_view($entity_type, $entity, $field, $instance, $
 function helper_get_use_cases($nodes) {
   $options = array();
   foreach ($nodes as $node) {
-    $options[strtolower($node->title)] = $node->field_use_case_description['und'][0]['safe_value'];
+    $description = ($node->field_use_case_description) ? $node->field_use_case_description['und'][0]['safe_value'] : 'MISSING USE CASE DESCRIPTION: NODE ' . $node->nid;
+    $key = strtolower($node->title);
+    $options[$key] = $description;
   }
 
   return $options;
@@ -105,8 +107,6 @@ function helper_get_recommendation_nodes_from_use_case_nodes($use_case_nodes, $a
   return $recommendation_nodes;
 }
 
-
-
 /**
  * @param array $options
  *   checkbox options
@@ -125,7 +125,7 @@ function helper_get_use_cases_form($form, &$form_state) {
 
   $form = array();
   $form['helper_use_cases'] = array(
-    '#title' => t('Security use cases'),
+    '#title' => t('Check all that apply'),
     '#type' => 'checkboxes',
     '#options' => $options,
     '#ajax' => array(
@@ -162,12 +162,16 @@ function helper_get_recommendations_markup($form_state) {
   $selected_recommendation_nodes = recommendation_overrides_enforce_overrides($selected_recommendation_nodes);
 
   $html_inner = '';
+  // Build tables separated by recommendation type.
   foreach ($recommendation_types as $tag) {
     $possible_recommendations = helper_get_recommendations_from_nodes_with_tag($recommendation_nodes, $tag);
     $recommendations = helper_get_selected_recommendations_from_nodes($selected_recommendation_nodes);
     $table = helper_get_recommendation_table_html($recommendations, $possible_recommendations);
     $html_inner .= sprintf('<h3>%s</h3>%s', $tag->name, $table);
   }
+  // Add recommendations with no "type" to their own table.
+  // @TODO
+  // Wrap it up.
   $html = sprintf('<div id="helper-tool-recommendations">%s</div>', $html_inner);
 
   return $html;
